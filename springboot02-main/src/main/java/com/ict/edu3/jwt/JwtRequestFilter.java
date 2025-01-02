@@ -5,85 +5,74 @@ import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.ict.edu3.common.util.JwtUtil;
+import com.ict.edu3.domain.user_info.service.UserService;
+import com.ict.edu3.domain.user_info.vo.UserVO;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
 
-// 토큰을 추출하고, 유효성 검사하여 , 유효한 경우만 사용자 정보를 로드,
-// 즉, 보호된 리소스에 대한 접근이 가능한 사용자인지 확인 
-@Slf4j
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
+
     @Autowired
     private JwtUtil jwtUtil;
 
-    // Spring Security가 UserDetailsService를 호출하여 사용자 정보를 데이터베이스에서 가져오는 역할
     @Autowired
-    private UserDetailsService userDetailsService;
+    private UserService userService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        
+        // 1. HTTP 요청 헤더에서 Authorization 값을 가져옵니다.
+        String authorizationHeader = request.getHeader("Authorization");
 
-        log.info("JwtRequestFilter 호출\n");
-        // 요청 헤더에서 Authorization 값 확인
-        final String requestTokenHeader = request.getHeader("Authorization");
-        String username = null;
-        String jwtToken = null;
-
-        // 토큰이 있으며 Authorization 안에 'Bearer '로 시작
-        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
-            // 토큰 추출
-            jwtToken = requestTokenHeader.substring(7);
-            log.info("JwtRequestFilter 추출메서드\n");
-            try {
-                // 이름추출 (id)
-                username = jwtUtil.extractuserName(jwtToken);
-                log.info("username : " + username + "\n");
-
-            } catch (Exception e) {
-                logger.warn("JWT Token error");
-            }
-        } else {
-            logger.warn("JWT Token empty");
+        // 2. Authorization 헤더가 없거나 "Bearer"로 시작하지 않으면 필터를 계속 진행.
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        // 사용자이름(아이디)추출, 현재SecurityContext에 인증정보가 설정되었는지 확인 없으면 다음 단계진행
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        // 3. "Bearer " 뒤의 JWT 토큰만 추출.
+        String jwtToken = authorizationHeader.substring(7);
 
-            // 사용자이름을 가지고 현재 DB에 있는지 검사(MyUserDetailService에 있는 메서드 이용)
-            // DataVO에서 m_id, m_pw, 를 username, password
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            log.info("userDetails.username : " + userDetails.getUsername() + "\n");
-            log.info("userDetails.password : " + userDetails.getPassword() + "\n");
+        try {
+            // 4. JWT 토큰을 검증하고 user_id 추출.
+            String userId = jwtUtil.validateAndGetUserIdFromToken(jwtToken);
 
-            if (jwtUtil.validateToken(jwtToken, userDetails)) {
-                // Spring Security 인증객체 생성
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
+            // 5. 해당 userId로 사용자 정보를 로드.
+            UserVO user = userService.getusersById(userId);
+            if (user != null) {
+                // 6. 사용자가 존재하면 SecurityContext에 사용자 인증 정보 세팅.
+                // (UserVO를 User로 변환하는 작업)
+                org.springframework.security.core.userdetails.User userDetails = new User(
+                        user.getUser_id(),  // 사용자 ID
+                        user.getUser_pw(),  // 사용자 비밀번호
+                        true,  // 활성화 여부
+                        true,  // 계정 만료 여부
+                        true,  // 자격 증명 만료 여부
+                        true,  // 계정 잠금 여부
+                        null  // Authorities (권한)은 추가하지 않음
+                );
 
-                // Spring Security 인증객체 추가 세부 정보를 설정
-                usernamePasswordAuthenticationToken
-                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                UsernamePasswordAuthenticationToken authentication = 
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-                // 인증 성공 후 아래 코드로 인증 객체를 SecurityContext에 설정
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
-            } else {
-                log.warn("JWT 토큰이 유효하지 않습니다");
+                // 7. 인증 정보를 SecurityContext에 저장.
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+        } catch (Exception e) {
+            logger.error("JWT 인증 오류", e);
         }
+
+        // 8. 필터 체인 다음 필터로 이동.
         filterChain.doFilter(request, response);
-
     }
-
 }

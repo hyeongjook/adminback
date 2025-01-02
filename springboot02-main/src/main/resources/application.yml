@@ -16,9 +16,9 @@ spring:
         name : edu3
 
     datasource:
-        url: jdbc:mysql://localhost:3306/ictede_db
-        username: ictedu
-        password: 1111
+        url: jdbc:mysql://localhost:3306/user_db
+        username: proj
+        password: 0000
         driver-class-name: com.mysql.cj.jdbc.Driver
 
 

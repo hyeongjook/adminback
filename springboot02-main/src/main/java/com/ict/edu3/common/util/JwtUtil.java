@@ -1,86 +1,43 @@
 package com.ict.edu3.common.util;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
 
-import javax.crypto.SecretKey;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtUtil {
-    @Value("${jwt.secret}")
-    private String secret; // 비밀키
 
-    @Value("${jwt.expiration}")
-    private long expiration; // 만료
+    private String secretKey = "yourSecretKey";  // 비밀 키 (환경 변수나 안전한 방법으로 설정해야 합니다)
+    private long expirationTime = 1000 * 60 * 60 * 10; // 만료 시간 (예: 10시간)
 
-    private SecretKey getKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    // 토큰 생성
-    public String generateToken(String id) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("phone", "010-7777-9999");
-        return generateToken(id, claims);
-    }
-
-    // 토큰 생성
-    public String generateToken(String username, Map<String, Object> claims) {
+    // JWT 토큰 생성
+    public String generateToken(String userId) {
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(username)
+                .setSubject(userId)  // user_id를 subject로 설정
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getKey(), SignatureAlgorithm.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))  // 만료 시간 설정
+                .signWith(SignatureAlgorithm.HS512, secretKey)
                 .compact();
     }
 
-    // 모든 정보 추출
-    private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getKey())
-                .build()
-                .parseClaimsJws(token)
+    // JWT 토큰에서 사용자 ID를 추출하고 유효성 검증
+    public String validateAndGetUserIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(secretKey)  // 비밀 키를 설정
+                .parseClaimsJws(token)  // 토큰을 파싱
                 .getBody();
+
+        // 토큰이 만료되지 않았는지 검증
+        if (claims.getExpiration().before(new Date())) {
+            throw new RuntimeException("JWT 토큰이 만료되었습니다.");
+        }
+
+        // 사용자 ID를 반환
+        return claims.getSubject();  // JWT의 Subject는 user_id입니다.
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    // 토근을 받아서 이름 추출한다.
-    public String extractuserName(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    // 토큰 검사
-    // UserDetails는 유저 정보를 로드하며, 관리하는 역할 한다.
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        // jwt 토큰에서 subject 정보를 가져오는 것
-        final String username = extractuserName(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-    }
-
-    // 만료시간 점검
-    public Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
 }

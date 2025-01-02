@@ -9,8 +9,8 @@ public class ResourceConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/upload/**") // URL 경로
-                .addResourceLocations("file:D:/upload/") // 실제 경로
-                .setCachePeriod(3600); // 캐시 기간(초)
+        // 정적 리소스 경로 설정
+        registry.addResourceHandler("/static/**")  // "/static" 경로에 대한 요청
+                .addResourceLocations("classpath:/static/");  // 해당 경로에 있는 파일을 제공
     }
 }
