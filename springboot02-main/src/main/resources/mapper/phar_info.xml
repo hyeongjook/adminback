@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace는 반드시 mapper 위치로 설정해야 된다. -->
+<mapper namespace="com.ict.edu3.domain.phar_info.mapper.PharMapper">
+	<insert id="pharinfoWrite" parameterType="pharVO">
+	 insert into members(phar_name, phar_address,
+	phar_long,phar_lat) values(#{phar_name},#{phar_address},#{phar_long},#{phar_lat}) </insert>
+
+	<select id="pharinfoList" resultType="pharVO"> select * from phar_info order by phar_idx asc </select>
+	<select id="getpharsById" parameterType="String" resultType="pharVO"> select * from phar_info where phar_idx = #{phar_idx}</select>
+
+
+</mapper>

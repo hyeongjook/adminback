@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-Edu3Application<edu3-springboot02-main>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.ict.edu3.Edu3Application",
+            "projectName": "edu3-springboot02-main",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
