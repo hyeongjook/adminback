@@ -80,7 +80,7 @@ server:
 
 mybatis:
   mapper-locations: mapper/*.xml
-  type-aliases-package: com.ict.edu3
+  type-aliases-package: com.ict.edu3.vo
 
 # 비밀키 사용(32바이트길이)  
 # 1 시간 = 1000ms * 60 * 60 ;

@@ -11,7 +11,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 @Component
 public class JwtUtil {
 
-    private String secretKey = "yourSecretKey";  // 비밀 키 (환경 변수나 안전한 방법으로 설정해야 합니다)
+    private String secretKey = "abcdASDF1234abcdQWER0987poiuPOIU";  // 비밀 키 (환경 변수나 안전한 방법으로 설정해야 합니다)
     private long expirationTime = 1000 * 60 * 60 * 10; // 만료 시간 (예: 10시간)
 
     // JWT 토큰 생성
